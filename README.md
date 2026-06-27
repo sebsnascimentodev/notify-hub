@@ -390,4 +390,4 @@ O pipeline GitHub Actions (`.github/workflows/ci.yml`) executa em todo push para
 
 ## Licença
 
-MIT © 2026 — [Priscila Nascimento](mailto:priscila.nascimento@cuia.tech)
+MIT © 2026 — [Sebastian Nascimento](mailto:sebastiandevnascimento@gmail.com)
