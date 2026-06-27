@@ -1,0 +1,265 @@
+{
+  "uid": "notify-hub-main",
+  "title": "notify-hub — Delivery Metrics",
+  "description": "Métricas de entrega por canal: taxa de sucesso, falhas, latência e DLQ",
+  "tags": ["notify-hub", "notifications"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "graphTooltip": 1,
+  "links": [],
+  "rows": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Notificações Entregues  (/min por canal)",
+      "description": "Taxa de entregas bem-sucedidas. Métrica: notify_hub_sent_total",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull", "sum"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(notify_hub_sent_total[5m])) by (channel) * 60",
+          "legendFormat": "{{ channel }}",
+          "instant": false,
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Falhas de Entrega  (/min por canal + motivo)",
+      "description": "Falhas agrupadas por canal e reason. Inclui circuit_breaker_open e erros de rede.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull", "sum"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(notify_hub_failed_total[5m])) by (channel, reason) * 60",
+          "legendFormat": "{{ channel }} / {{ reason }}",
+          "instant": false,
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Latência de Entrega  (p50 / p95 / p99)",
+      "description": "Percentis de latência por canal em segundos. SLO sugerido: p99 < 5s.",
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 8 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull", "mean", "max"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red",    "value": 5 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(notify_hub_latency_seconds_bucket[5m])) by (le, channel))",
+          "legendFormat": "p50 — {{ channel }}",
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(notify_hub_latency_seconds_bucket[5m])) by (le, channel))",
+          "legendFormat": "p95 — {{ channel }}",
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "C",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(notify_hub_latency_seconds_bucket[5m])) by (le, channel))",
+          "legendFormat": "p99 — {{ channel }}",
+          "instant": false,
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Eventos na DLQ",
+      "description": "Total acumulado de notificações enviadas para dead-letter queue.",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 8 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red",    "value": 10 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(notify_hub_dlq_total) or vector(0)",
+          "legendFormat": "DLQ total",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Circuit Breakers",
+      "description": "Estado por canal. Verde=CLOSED (operacional), Vermelho=OPEN (isolado).",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 8 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "orientation": "horizontal"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "CLOSED",    "color": "green"  } } },
+            { "type": "value", "options": { "1": { "text": "OPEN",      "color": "red"    } } },
+            { "type": "value", "options": { "2": { "text": "HALF_OPEN", "color": "yellow" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "resilience4j_circuitbreaker_state",
+          "legendFormat": "{{ name }}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Taxa de Sucesso  (%)",
+      "description": "Percentual de entregas bem-sucedidas sobre o total de tentativas.",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 12 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "yellow", "value": 90 },
+              { "color": "green",  "value": 99 }
+            ]
+          },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "100 * sum(rate(notify_hub_sent_total[5m])) / clamp_min(sum(rate(notify_hub_sent_total[5m])) + sum(rate(notify_hub_failed_total[5m])), 1)",
+          "legendFormat": "Success rate",
+          "instant": false,
+          "range": true
+        }
+      ]
+    }
+  ]
+}

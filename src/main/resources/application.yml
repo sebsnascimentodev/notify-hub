@@ -1,0 +1,171 @@
+spring:
+  application:
+    name: notify-hub
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/notifyhub}
+    username: ${DB_USER:notifyhub}
+    password: ${DB_PASS:notifyhub}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+    consumer:
+      group-id: notify-hub-consumers
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      enable-auto-commit: false
+      properties:
+        spring.json.trusted.packages: "tech.cuia.notifyhub.*"
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASS:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 4
+
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASS:}
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+
+# ----------------------------------------------------------------------------
+# Resilience4j
+# ----------------------------------------------------------------------------
+resilience4j:
+  circuitbreaker:
+    instances:
+      email:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true
+      webhook:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true
+
+  retry:
+    instances:
+      email:
+        # Retentativas rápidas dentro do mesmo ciclo de entrega (falhas transitórias de SMTP)
+        max-attempts: 2
+        wait-duration: 300ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+      webhook:
+        # Retentativas rápidas para erros de rede HTTP (5xx retryable)
+        max-attempts: 2
+        wait-duration: 300ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-on-result-predicate: tech.cuia.notifyhub.infrastructure.resilience.HttpRetryPredicate
+
+# ----------------------------------------------------------------------------
+# Configurações customizadas do notify-hub
+# ----------------------------------------------------------------------------
+notify-hub:
+  delivery:
+    max-attempts: 3                # janela distribuída via tópico retry (Kafka)
+    deduplication:
+      ttl: 24h                     # chave Redis expira após este período
+
+  channel:
+    webhook:
+      connect-timeout: 5s
+      read-timeout: 10s
+
+  security:
+    jwt:
+      secret: ${JWT_SECRET:changeme-at-least-32-chars-long!!}
+      expiration: 3600s
+    demo-client:
+      id: ${DEMO_CLIENT_ID:demo}
+      secret: ${DEMO_CLIENT_SECRET:demo-secret}
+
+# ----------------------------------------------------------------------------
+# Actuator + Prometheus
+# ----------------------------------------------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  health:
+    circuitbreakers:
+      enabled: true
+    kafka:
+      enabled: true
+    redis:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        notify_hub.latency: true
+
+# ----------------------------------------------------------------------------
+# OpenAPI
+# ----------------------------------------------------------------------------
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+
+logging:
+  level:
+    tech.cuia.notifyhub: INFO
+    org.springframework.kafka: WARN

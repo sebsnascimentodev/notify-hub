@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>notify-hub — Async Notification Platform</title>
+<meta name="description" content="Hub de notificações assíncronas multi-canal com Java 21, Spring Boot, Kafka, Redis e Resilience4j.">
+<meta property="og:title" content="notify-hub">
+<meta property="og:description" content="Production-grade async notification platform — Java 21 · Kafka · Circuit Breaker · Redis · Prometheus">
+<meta property="og:url" content="https://notify-hub.tech">
+<style>
+:root {
+  --bg:      #0B1120;
+  --surf:    #111827;
+  --surf2:   #162033;
+  --border:  rgba(255,255,255,0.07);
+  --teal:    #00C9A7;
+  --teal-d:  rgba(0,201,167,0.13);
+  --amber:   #F59E0B;
+  --red:     #EF4444;
+  --blue:    #7DD3FC;
+  --violet:  #A78BFA;
+  --text:    #E2E8F0;
+  --muted:   #64748B;
+  --mono: 'SF Mono','Fira Code','Fira Mono','Roboto Mono',Consolas,monospace;
+  --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:var(--sans);font-size:1rem;line-height:1.65;overflow-x:hidden;
+}
+a{color:var(--teal);text-decoration:none}
+a:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:2px}
+
+/* NAV */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 2rem;height:56px;
+  background:rgba(11,17,32,0.85);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.nav-logo{font-family:var(--mono);font-size:.95rem;font-weight:700;color:var(--teal);letter-spacing:-.02em}
+.nav-logo span{color:var(--muted)}
+.nav-links{display:flex;gap:1.5rem;align-items:center}
+.nav-links a{color:var(--muted);font-size:.85rem;transition:color .15s}
+.nav-links a:hover{color:var(--text)}
+.btn-ghost{
+  font-family:var(--mono);font-size:.78rem;
+  border:1px solid var(--border);border-radius:4px;
+  padding:.3rem .85rem;color:var(--text) !important;
+  transition:border-color .15s,background .15s;
+}
+.btn-ghost:hover{border-color:var(--teal);background:var(--teal-d)}
+
+/* HERO */
+#hero{
+  position:relative;min-height:100vh;
+  display:flex;align-items:center;padding:0 2rem;overflow:hidden;
+}
+#canvas{position:absolute;inset:0;width:100%;height:100%}
+.hero-content{position:relative;max-width:640px;padding-top:56px}
+.eyebrow{
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--teal);
+  margin-bottom:1.25rem;display:flex;align-items:center;gap:.6rem;
+}
+.eyebrow::before{content:'';display:block;width:28px;height:1px;background:var(--teal)}
+h1{
+  font-family:var(--mono);font-size:clamp(2.5rem,5.5vw,4rem);
+  font-weight:700;line-height:1.1;letter-spacing:-.04em;
+  color:#fff;margin-bottom:1.25rem;text-wrap:balance;
+}
+h1 em{font-style:normal;color:var(--teal)}
+.hero-sub{
+  font-size:1.05rem;color:#94A3B8;
+  max-width:500px;margin-bottom:2.25rem;line-height:1.7;
+}
+.hero-actions{display:flex;gap:.875rem;flex-wrap:wrap}
+.btn-primary{
+  font-family:var(--mono);font-size:.85rem;font-weight:600;
+  background:var(--teal);color:#0B1120;
+  padding:.6rem 1.4rem;border-radius:4px;
+  display:inline-flex;align-items:center;gap:.4rem;
+  transition:opacity .15s,transform .1s;
+}
+.btn-primary:hover{opacity:.88;transform:translateY(-1px);color:#0B1120}
+.btn-sec{
+  font-family:var(--mono);font-size:.85rem;
+  border:1px solid rgba(255,255,255,.13);color:var(--text);
+  padding:.6rem 1.4rem;border-radius:4px;
+  transition:border-color .15s,background .15s;
+}
+.btn-sec:hover{border-color:var(--teal);background:var(--teal-d);color:var(--text)}
+.hero-scroll{
+  position:absolute;bottom:2rem;left:2rem;
+  font-family:var(--mono);font-size:.68rem;color:var(--muted);
+  letter-spacing:.1em;display:flex;align-items:flex-end;gap:.5rem;
+}
+.scroll-line{
+  width:1px;height:32px;background:var(--muted);
+  animation:spulse 2s ease-in-out infinite;
+}
+@keyframes spulse{0%,100%{opacity:.25}50%{opacity:.9}}
+
+/* SECTIONS */
+section{padding:5rem 2rem}
+.container{max-width:1040px;margin:0 auto}
+.section-label{
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--teal);margin-bottom:.75rem;
+}
+h2{
+  font-family:var(--mono);font-size:clamp(1.4rem,2.8vw,1.9rem);
+  font-weight:700;letter-spacing:-.03em;color:#fff;
+  text-wrap:balance;margin-bottom:.875rem;
+}
+.section-intro{color:#94A3B8;font-size:.95rem;max-width:540px;margin-bottom:3rem}
+
+/* STACK */
+#stack{background:var(--surf);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.tag-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:2rem}
+.tag{
+  font-family:var(--mono);font-size:.76rem;
+  padding:.28rem .75rem;border-radius:3px;
+  border:1px solid var(--border);background:var(--surf2);color:var(--text);
+  white-space:nowrap;transition:border-color .15s,background .15s;
+}
+.tag:hover{border-color:var(--teal);background:var(--teal-d)}
+.tag.hi{border-color:rgba(0,201,167,.3);color:var(--teal)}
+
+/* FLOW STEPS */
+.flow-steps{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-top:2.5rem;
+}
+.flow-step{padding:1.6rem;border-right:1px solid var(--border)}
+.flow-step:last-child{border-right:none}
+.step-n{font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-bottom:.6rem}
+.step-ico{font-size:1.3rem;margin-bottom:.5rem;display:block}
+.step-t{font-family:var(--mono);font-weight:600;font-size:.88rem;color:#fff;margin-bottom:.4rem}
+.step-d{font-size:.83rem;color:#94A3B8;line-height:1.55}
+.step-d code{font-family:var(--mono);font-size:.78em;color:var(--amber);background:rgba(245,158,11,.08);padding:.1em .3em;border-radius:2px}
+
+/* DECISIONS */
+#decisions{background:var(--surf)}
+.dec-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1px;background:var(--border);
+  border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-top:2.5rem;
+}
+.dec{background:var(--surf);padding:1.6rem;transition:background .2s}
+.dec:hover{background:var(--surf2)}
+.dec-tag{font-family:var(--mono);font-size:.67rem;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:.65rem}
+.dec h3{font-family:var(--mono);font-size:.92rem;font-weight:600;color:#fff;margin-bottom:.5rem;line-height:1.3;text-wrap:balance}
+.dec p{font-size:.83rem;color:#94A3B8;line-height:1.6}
+.dec code{font-family:var(--mono);font-size:.79em;color:var(--amber);background:rgba(245,158,11,.08);padding:.1em .3em;border-radius:2px}
+
+/* TERMINAL */
+.terminal{
+  background:#0D1526;border:1px solid var(--border);
+  border-radius:6px;overflow:hidden;margin-top:2.5rem;
+}
+.t-bar{
+  background:var(--surf2);padding:.55rem 1rem;
+  display:flex;align-items:center;gap:.4rem;
+  border-bottom:1px solid var(--border);
+}
+.dot{width:10px;height:10px;border-radius:50%}
+.dot.r{background:#EF4444}.dot.y{background:#F59E0B}.dot.g{background:#22C55E}
+.t-fname{font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-left:.5rem}
+.t-body{padding:1.5rem;overflow-x:auto}
+.t-body pre{font-family:var(--mono);font-size:.81rem;line-height:1.85;color:var(--text);white-space:pre}
+.cm{color:var(--muted)}.ct{color:var(--teal)}.ca{color:var(--amber)}
+.cw{color:#fff}.cb{color:var(--blue)}
+
+/* METRICS */
+#metrics{background:var(--surf);border-top:1px solid var(--border)}
+.met-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem;margin-top:2.5rem}
+.met{
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:6px;padding:1.2rem 1.4rem;transition:border-color .2s;
+}
+.met:hover{border-color:var(--teal)}
+.met-name{font-family:var(--mono);font-size:.77rem;color:var(--teal);margin-bottom:.35rem}
+.met-type{font-family:var(--mono);font-size:.66rem;color:var(--muted);margin-bottom:.6rem}
+.met-desc{font-size:.81rem;color:#94A3B8;line-height:1.55}
+.chips{margin-top:.65rem;display:flex;gap:.35rem;flex-wrap:wrap}
+.chip{
+  font-family:var(--mono);font-size:.64rem;
+  padding:.1rem .4rem;border-radius:2px;
+  background:var(--surf2);color:var(--muted);border:1px solid var(--border);
+}
+
+/* FOOTER */
+footer{
+  border-top:1px solid var(--border);padding:2.5rem 2rem;
+  display:flex;flex-wrap:wrap;gap:1rem;
+  align-items:center;justify-content:space-between;
+}
+.f-brand{font-family:var(--mono);font-size:.82rem;color:var(--muted)}
+.f-brand strong{color:var(--teal)}
+.f-links{display:flex;gap:1.5rem;font-family:var(--mono);font-size:.76rem}
+.f-links a{color:var(--muted);transition:color .15s}
+.f-links a:hover{color:var(--teal)}
+
+/* RESPONSIVE */
+@media(max-width:640px){
+  nav{padding:0 1.25rem}
+  #hero,section{padding-left:1.25rem;padding-right:1.25rem}
+  .nav-links a:not(.btn-ghost){display:none}
+  .flow-steps{grid-template-columns:1fr}
+  .flow-step{border-right:none;border-bottom:1px solid var(--border)}
+  .flow-step:last-child{border-bottom:none}
+  footer{flex-direction:column;align-items:flex-start}
+}
+@media(prefers-reduced-motion:reduce){.scroll-line{animation:none}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">notify<span>-</span>hub</a>
+  <div class="nav-links">
+    <a href="#flow">Arquitetura</a>
+    <a href="#decisions">Decisões</a>
+    <a href="#quickstart">Quick start</a>
+    <a href="https://github.com/priscila-nascimento/notify-hub" class="btn-ghost" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</nav>
+
+<section id="hero">
+  <canvas id="canvas"></canvas>
+  <div class="hero-content">
+    <p class="eyebrow">Portfólio — Engenharia de Software Sênior</p>
+    <h1>Hub de notificações<br><em>assíncronas</em></h1>
+    <p class="hero-sub">
+      Plataforma event-driven para despacho multi-canal com garantias de entrega
+      at-least-once, deduplicação atômica e circuit breaker por canal —
+      construída sobre Java&nbsp;21, Kafka e Resilience4j.
+    </p>
+    <div class="hero-actions">
+      <a href="https://github.com/priscila-nascimento/notify-hub" class="btn-primary" target="_blank" rel="noopener">
+        Ver no GitHub
+      </a>
+      <a href="#quickstart" class="btn-sec">Quick start →</a>
+    </div>
+  </div>
+  <p class="hero-scroll">scroll <span class="scroll-line"></span></p>
+</section>
+
+<section id="stack">
+  <div class="container">
+    <p class="section-label">Stack</p>
+    <h2>Tecnologias</h2>
+    <div class="tag-row">
+      <span class="tag hi">Java 21</span>
+      <span class="tag hi">Spring Boot 3.4</span>
+      <span class="tag hi">Apache Kafka</span>
+      <span class="tag hi">Redis 7</span>
+      <span class="tag hi">Resilience4j 2.2</span>
+      <span class="tag">PostgreSQL 16</span>
+      <span class="tag">Flyway</span>
+      <span class="tag">Micrometer</span>
+      <span class="tag">Prometheus</span>
+      <span class="tag">Grafana</span>
+      <span class="tag">Spring Security + JWT</span>
+      <span class="tag">SpringDoc OpenAPI</span>
+      <span class="tag">Docker Compose</span>
+      <span class="tag">GitHub Actions</span>
+      <span class="tag">Clean Architecture</span>
+      <span class="tag">Hexagonal / Ports &amp; Adapters</span>
+      <span class="tag">JUnit 5</span>
+      <span class="tag">@EmbeddedKafka</span>
+      <span class="tag">Testcontainers</span>
+    </div>
+  </div>
+</section>
+
+<section id="flow">
+  <div class="container">
+    <p class="section-label">Arquitetura</p>
+    <h2>Como uma notificação é entregue</h2>
+    <p class="section-intro">
+      Do POST REST até a confirmação de entrega, cada etapa carrega garantias
+      explícitas de idempotência, resiliência e rastreabilidade.
+    </p>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <p class="step-n">01</p>
+        <span class="step-ico">⚡</span>
+        <p class="step-t">API REST</p>
+        <p class="step-d">Cliente autentica com JWT e faz POST com <code>idempotencyKey</code>. A API retorna <code>202 Accepted</code> imediatamente — sem esperar a entrega.</p>
+      </div>
+      <div class="flow-step">
+        <p class="step-n">02</p>
+        <span class="step-ico">📨</span>
+        <p class="step-t">Kafka Pending</p>
+        <p class="step-d">Notificação persiste como <code>PENDING</code> no PostgreSQL e é publicada em <code>notifications.pending</code>. Produtor usa idempotência nativa do Kafka.</p>
+      </div>
+      <div class="flow-step">
+        <p class="step-n">03</p>
+        <span class="step-ico">🔒</span>
+        <p class="step-t">Redis Dedup</p>
+        <p class="step-d">Consumer verifica <code>SETNX</code> atômico no Redis. Eventos duplicados de partições concorrentes são descartados sem efeito colateral no banco.</p>
+      </div>
+      <div class="flow-step">
+        <p class="step-n">04</p>
+        <span class="step-ico">🛡️</span>
+        <p class="step-t">Circuit Breaker</p>
+        <p class="step-d">Resilience4j isola falhas por canal. EMAIL e WEBHOOK têm CBs independentes — falha em um não afeta o outro. CB aberto roteia direto para DLQ.</p>
+      </div>
+      <div class="flow-step">
+        <p class="step-n">05</p>
+        <span class="step-ico">✅</span>
+        <p class="step-t">SENT ou DLQ</p>
+        <p class="step-d">Sucesso atualiza para <code>SENT</code>. Falha sustentada vai para <code>notifications.dlq</code> com audit trail imutável via trigger PostgreSQL.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="decisions">
+  <div class="container">
+    <p class="section-label">Design</p>
+    <h2>Decisões de arquitetura</h2>
+    <p class="section-intro">
+      Escolhas com tradeoffs documentados — o tipo de conversa que distingue
+      uma entrevista técnica sênior de uma apresentação de CRUD.
+    </p>
+    <div class="dec-grid">
+      <div class="dec">
+        <p class="dec-tag">Transporte</p>
+        <h3>Kafka em vez de RabbitMQ</h3>
+        <p>Log imutável permite replay de eventos. DLQ é um tópico nativo — reprocessar é um <code>--from-beginning</code>. RabbitMQ resolveria menos por mais complexidade operacional.</p>
+      </div>
+      <div class="dec">
+        <p class="dec-tag">Idempotência</p>
+        <h3>Redis SETNX, não constraint SQL</h3>
+        <p>Operação atômica sem locks explícitos. A alternativa via <code>UNIQUE</code> no PostgreSQL exige tratar <code>ConstraintViolationException</code> e é 10–50× mais lenta sob concorrência de partições.</p>
+      </div>
+      <div class="dec">
+        <p class="dec-tag">Resiliência</p>
+        <h3>Retry em dois níveis independentes</h3>
+        <p><code>@Retry</code> trata blips rápidos (300ms/600ms inline). Tópico <code>notifications.retry</code> trata falhas sustentadas com delay exponencial via header ByteBuffer. Cada nível tem causa distinta.</p>
+      </div>
+      <div class="dec">
+        <p class="dec-tag">Domínio</p>
+        <h3>CircuitBreakerOpenException no núcleo</h3>
+        <p>Exceção de domínio (não de infra) permite que o <code>NotificationDispatchService</code> roteia CB aberto direto para DLQ sem vazar abstração de infraestrutura para a camada de aplicação.</p>
+      </div>
+      <div class="dec">
+        <p class="dec-tag">Persistência</p>
+        <h3>Auditoria imutável via trigger</h3>
+        <p>Trigger <code>AFTER UPDATE OF status</code> garante que nenhum código de aplicação precise lembrar de gravar o histórico. A tabela <code>notification_audit</code> nunca é escrita diretamente pela app.</p>
+      </div>
+      <div class="dec">
+        <p class="dec-tag">Arquitetura</p>
+        <h3>Clean Architecture / Hexagonal</h3>
+        <p>Domain zero-deps — nenhuma anotação Spring no núcleo. Portas e adaptadores permitem trocar Kafka por SQS ou PostgreSQL por MongoDB sem tocar em regras de negócio.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="quickstart">
+  <div class="container">
+    <p class="section-label">Execução local</p>
+    <h2>Um comando para tudo</h2>
+    <p class="section-intro">
+      Docker Compose sobe 9 serviços com healthchecks e dependências corretas.
+      Nenhuma configuração manual necessária.
+    </p>
+    <div class="terminal">
+      <div class="t-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="t-fname">bash</span>
+      </div>
+      <div class="t-body"><pre><span class="cm"># clone o repositório</span>
+<span class="ct">git clone</span> <span class="cw">https://github.com/priscila-nascimento/notify-hub</span>
+<span class="ct">cd</span> notify-hub
+
+<span class="cm"># sobe todos os serviços</span>
+<span class="ct">docker compose up</span> <span class="ca">-d</span>
+
+<span class="cm"># autenticar e guardar o token</span>
+<span class="ct">TOKEN</span>=<span class="cb">$(</span><span class="ct">curl</span> <span class="ca">-s -X POST</span> http://localhost:8080/api/v1/auth/token \
+  <span class="ca">-H</span> <span class="cb">"Content-Type: application/json"</span> \
+  <span class="ca">-d</span> <span class="cb">'{"clientId":"demo","clientSecret":"demo-secret"}'</span> \
+  | grep <span class="cb">-o</span> <span class="cb">'"accessToken":"[^"]*"'</span> | cut <span class="ca">-d'"'</span> <span class="ca">-f4</span><span class="cb">)</span>
+
+<span class="cm"># enviar notificação por e-mail</span>
+<span class="ct">curl</span> <span class="ca">-s -X POST</span> http://localhost:8080/api/v1/notifications \
+  <span class="ca">-H</span> <span class="cb">"Authorization: Bearer $TOKEN"</span> \
+  <span class="ca">-H</span> <span class="cb">"Content-Type: application/json"</span> \
+  <span class="ca">-d</span> <span class="cb">'{"channel":"EMAIL","recipient":"u@exemplo.com",
+      "payload":{"subject":"Olá","body":"Notificação entregue."},
+      "idempotencyKey":"demo-001"}'</span></pre></div>
+    </div>
+    <div class="tag-row" style="margin-top:1.4rem">
+      <span class="tag">:8080 Swagger UI</span>
+      <span class="tag">:3000 Grafana  admin/admin</span>
+      <span class="tag">:9090 Prometheus</span>
+      <span class="tag">:8025 MailHog</span>
+      <span class="tag">:8090 Kafka UI</span>
+    </div>
+  </div>
+</section>
+
+<section id="metrics">
+  <div class="container">
+    <p class="section-label">Observabilidade</p>
+    <h2>Métricas prontas para Prometheus</h2>
+    <p class="section-intro">
+      Dashboard Grafana pré-provisionado com taxa de entrega por canal,
+      latência p50/p95/p99, DLQ counter e estado dos Circuit Breakers.
+    </p>
+    <div class="met-grid">
+      <div class="met">
+        <p class="met-name">notify_hub_sent_total</p>
+        <p class="met-type">Counter</p>
+        <p class="met-desc">Entregas bem-sucedidas por canal.</p>
+        <div class="chips"><span class="chip">channel</span></div>
+      </div>
+      <div class="met">
+        <p class="met-name">notify_hub_failed_total</p>
+        <p class="met-type">Counter</p>
+        <p class="met-desc">Falhas com motivo discriminado.</p>
+        <div class="chips"><span class="chip">channel</span><span class="chip">reason</span></div>
+      </div>
+      <div class="met">
+        <p class="met-name">notify_hub_latency_seconds</p>
+        <p class="met-type">Histogram · SLO buckets</p>
+        <p class="met-desc">Latência de entrega p50 / p95 / p99.</p>
+        <div class="chips"><span class="chip">channel</span></div>
+      </div>
+      <div class="met">
+        <p class="met-name">notify_hub_dlq_total</p>
+        <p class="met-type">Counter</p>
+        <p class="met-desc">Eventos para dead-letter queue após retries esgotados.</p>
+        <div class="chips"><span class="chip">channel</span></div>
+      </div>
+      <div class="met">
+        <p class="met-name">resilience4j_circuitbreaker_state</p>
+        <p class="met-type">Gauge</p>
+        <p class="met-desc">CLOSED / OPEN / HALF_OPEN por canal em tempo real.</p>
+        <div class="chips"><span class="chip">name</span><span class="chip">state</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p class="f-brand"><strong>notify-hub</strong> — Priscila Nascimento · priscila.nascimento@cuia.tech</p>
+  <div class="f-links">
+    <a href="https://github.com/priscila-nascimento/notify-hub" target="_blank" rel="noopener">GitHub</a>
+    <a href="mailto:priscila.nascimento@cuia.tech">Contato</a>
+    <a href="https://notify-hub.tech/swagger-ui.html" target="_blank" rel="noopener">Swagger UI</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, nodes, edges, particles = [];
+  let raf, tick = 0;
+
+  const C = {
+    teal:   '#00C9A7',
+    amber:  '#F59E0B',
+    red:    '#EF4444',
+    blue:   '#7DD3FC',
+    violet: '#A78BFA',
+    edge:   'rgba(30,45,61,0.8)',
+    label:  '#475569',
+  };
+
+  function resize() {
+    W = canvas.width  = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+    build();
+  }
+
+  function mk(label, rx, ry, color) {
+    return { label, x: W * rx, y: H * ry, color };
+  }
+
+  function build() {
+    nodes = [
+      mk('CLIENT',  0.10, 0.42, C.teal),
+      mk('KAFKA',   0.35, 0.26, C.amber),
+      mk('REDIS',   0.35, 0.58, C.blue),
+      mk('EMAIL',   0.62, 0.18, C.teal),
+      mk('WEBHOOK', 0.62, 0.46, C.teal),
+      mk('DB',      0.62, 0.72, C.violet),
+      mk('DLQ',     0.84, 0.30, C.red),
+      mk('GRAFANA', 0.84, 0.62, C.amber),
+    ];
+
+    edges = [
+      { f:0, t:1, col:C.teal,   w:0.9 },
+      { f:1, t:2, col:C.blue,   w:0.8 },
+      { f:2, t:3, col:C.teal,   w:0.7 },
+      { f:2, t:4, col:C.teal,   w:0.6 },
+      { f:3, t:5, col:C.violet, w:0.9 },
+      { f:4, t:5, col:C.violet, w:0.9 },
+      { f:3, t:6, col:C.red,    w:0.2 },
+      { f:1, t:6, col:C.red,    w:0.15 },
+      { f:3, t:7, col:C.amber,  w:0.5 },
+      { f:4, t:7, col:C.amber,  w:0.5 },
+    ];
+  }
+
+  function spawn(e) {
+    const a = nodes[e.f], b = nodes[e.t];
+    particles.push({
+      sx: a.x, sy: a.y,
+      tx: b.x, ty: b.y,
+      t: 0,
+      spd: 0.004 + Math.random() * 0.005,
+      col: e.col,
+    });
+  }
+
+  function draw() {
+    raf = requestAnimationFrame(draw);
+    tick++;
+    ctx.clearRect(0, 0, W, H);
+
+    // draw edges
+    edges.forEach(e => {
+      const a = nodes[e.f], b = nodes[e.t];
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = C.edge;
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 1;
+      ctx.stroke();
+    });
+
+    // spawn particles
+    if (tick % 20 === 0) {
+      const e = edges[Math.floor(Math.random() * edges.length)];
+      if (Math.random() < e.w) spawn(e);
+    }
+
+    // update + draw particles
+    const alive = [];
+    particles.forEach(p => {
+      p.t += p.spd;
+      if (p.t > 1.1) return;
+      const x = p.sx + (p.tx - p.sx) * Math.min(p.t, 1);
+      const y = p.sy + (p.ty - p.sy) * Math.min(p.t, 1);
+      const alpha = Math.min(1, p.t * 5) * Math.max(0, 1 - (p.t - 0.75) * 4);
+      if (alpha <= 0) { alive.push(p); return; }
+      ctx.beginPath();
+      ctx.arc(x, y, 2.8, 0, Math.PI * 2);
+      ctx.fillStyle = p.col;
+      ctx.globalAlpha = alpha * 0.85;
+      ctx.fill();
+      alive.push(p);
+    });
+    particles = alive.filter(p => p.t <= 1.1);
+    ctx.globalAlpha = 1;
+
+    // draw nodes
+    nodes.forEach(n => {
+      // glow
+      const grd = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, 30);
+      grd.addColorStop(0, n.color + '1A');
+      grd.addColorStop(1, 'transparent');
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, 30, 0, Math.PI * 2);
+      ctx.fillStyle = grd;
+      ctx.fill();
+
+      // outer ring
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, 9, 0, Math.PI * 2);
+      ctx.strokeStyle = n.color + '40';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // dot
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, 5.5, 0, Math.PI * 2);
+      ctx.fillStyle = n.color;
+      ctx.globalAlpha = 1;
+      ctx.fill();
+
+      // label
+      ctx.font = '600 10.5px ' + (getComputedStyle(document.documentElement).getPropertyValue('--mono') || 'monospace');
+      ctx.fillStyle = C.label;
+      ctx.textAlign = 'center';
+      ctx.fillText(n.label, n.x, n.y + 22);
+    });
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  draw();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelAnimationFrame(raf);
+    else draw();
+  });
+})();
+</script>
+</body>
+</html>
