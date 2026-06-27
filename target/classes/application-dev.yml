@@ -1,0 +1,34 @@
+# Perfil dev: stubs ativos, logs verbosos, sem TLS, tolerâncias maiores
+spring:
+  mail:
+    # Aponta para MailHog (docker-compose) — aceita tudo sem enviar de verdade
+    host: localhost
+    port: 1025
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      email:
+        # Em dev, o CB abre mais devagar para não atrapalhar testes manuais
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 80
+        wait-duration-in-open-state: 10s
+      webhook:
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 80
+        wait-duration-in-open-state: 10s
+
+notify-hub:
+  security:
+    jwt:
+      secret: dev-secret-key-not-for-production-use!!
+      expiration: 86400s    # 24h para facilitar testes manuais
+
+logging:
+  level:
+    tech.cuia.notifyhub: DEBUG
+    org.springframework.kafka: INFO
+    io.github.resilience4j: DEBUG

@@ -74,9 +74,9 @@ class CircuitBreakerTest {
             var cb = registry.circuitBreaker("email");
             var notification = notificationId();
 
-            // 4 falhas em 10 = 40% < threshold de 50%
+            // 2 falhas em 10 = 20% < threshold de 50%
             IntStream.range(0, 10).forEach(i ->
-                    recordResult(cb, i < 4
+                recordResult(cb, i < 2
                             ? new NotificationDeliveryException(notification, ChannelType.EMAIL, "error", null)
                             : null));
 
